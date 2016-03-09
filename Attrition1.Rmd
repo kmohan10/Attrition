@@ -1,0 +1,875 @@
+---
+title: "Data Mining - Assignment 1"
+author: "Krishna Mohan"
+date: "March 1, 2016"
+output: word_document
+---
+
+### Objective
+#### Analyze the Employee Attrition data, hypothesize and create predictive models using techniques such as CHAID and CART.  The target variable is Attrition.
+
+Set working directory
+
+```{r set_working_dir}
+getwd()
+setwd("C:/Recovered Files/Krishna/PGPBA/Data Mining/Assignment 1")
+```
+
+Read Input File
+```{r read_input_data}
+Attrition = read.csv("HR_Employee_Attrition_Data.csv", header = TRUE, stringsAsFactors = FALSE)
+```
+###  There are 2940 Observations and 35 columns
+   
+***
+
+Before starting any analysis, let us first establish the baseline.  The objective of this project is to build a model that can improve upon the baseline.
+
+BASELINE POPULATION: Current Attrition level
+```{r baseline_attrition}
+table(Attrition$Attrition)
+
+prop.table(table(Attrition$Attrition))
+```
+Yes: 474(16%)  No: 2466(84%)
+
+In other words, if a random employee is classified as Non-Attrition, there is a 84% probability of being correct.
+***
+
+Split data into TRAIN and TEST datasets
+```{r split_data}
+library(caTools)
+set.seed(100)
+sample = sample.split(Attrition$Attrition, SplitRatio = 0.7)
+train = subset(Attrition, sample == TRUE)
+test = subset(Attrition,sample==FALSE)
+
+train1 = train
+```
+
+train: 2058 obs  test: 882 obs
+
+BASELINE TRAINING SET
+
+```{r train_data_baseline}
+table(train$Attrition)
+
+prop.table(table(train$Attrition))
+```
+Yes: 332(16%)  No: 1726(84%)
+
+```{r summary_train_data}
+summary(train)
+train$Attrition[train$Attrition == "Yes"] = 1
+train$Attrition[train$Attrition == "No"] = 0
+```
+
+#### No missing values found from Summary.
+
+***
+
+### Understand data structure - Perform Univariate Analysis
+
+### Continous Variables - Generate Descriptive Statistics and Plots
+
+### Draw Box Plots for all Continuous Variables
+
+```{r boxplot_1}
+library(ggplot2)
+attach(train)
+
+par(mfrow = c(1,2))
+
+boxplot(Age~train$Attrition, main='Age Vs Attrition', xlab='Attrition')
+
+boxplot(DailyRate~train$Attrition, main = 'Daily Rate', xlab='Attrition')
+
+boxplot(DistanceFromHome~train$Attrition, main = 'Distance', xlab='Attrition')
+
+boxplot(Education~train$Attrition, main = 'Education', xlab='Attrition')
+
+boxplot(EmployeeCount~train$Attrition, main = 'Emp Count', xlab='Attrition')
+
+boxplot(EnvironmentSatisfaction~train$Attrition, main = 'Emp Satisfaction', xlab='Attrition')
+
+```
+
+#### FINDINGS:
+##### Age:                      INVESTIGATE - Lower Median age (Approx 3 yrs) for those who left the company 
+##### DailyRate:                IGNORE - Daily Rate does not seem to make much of an impact on Attrition
+##### DistanceFromHome:         INVESTIGATE - Attrition employees travel longer to work
+##### Education:                IGNORE - Education has NO impact on Attrition - identical distribution
+##### EmployeeCount:            IGNORE - Identical distribution
+##### EnvironmentSatisfaction:  INVESTIGATE - There are no non-Attrition employees with rating less than 2
+
+***
+
+```{r boxplot_2}
+par(mfrow = c(1,2))
+
+boxplot(HourlyRate~train$Attrition, main = 'Hourly Rt', xlab='Attrition')
+  
+boxplot(JobInvolvement~train$Attrition, main = 'Job Involvement', xlab='Attrition')
+  
+boxplot(JobSatisfaction~train$Attrition, main = 'Job Satisfaction', xlab='Attrition')
+  
+boxplot(MonthlyIncome~train$Attrition, main = 'Monthly Income', xlab='Attrition')
+  
+boxplot(MonthlyRate~train$Attrition, main = 'Monthly Rate', xlab='Attrition')
+  
+boxplot(NumCompaniesWorked~train$Attrition, main = 'Companies Worked', xlab='Attrition')
+ 
+```
+
+#### FINDINGS:
+##### HourlyRate: IGNORE - Very similar distribution
+##### JobInvolvement: IGNORE - Most between 2 and 3 - Identical distribution
+##### JobSatisfaction: INVESTIGATE - Very Interesting!!  Non-Attrition employees have ratings 2-4 while Attrition employees have ratings 1-3.
+##### MonthlyIncome: INVESTIGATE - Attrition employees have significantly lower Montly Income with small IQR
+##### MonthlyRAte: IGNORE - Very similar distribution - Not very significant
+##### NumCompaniesWorked: IGNORE - Attrition employees seem to have worked in fewer companies compared to non-Attrition employees 
+   
+***
+
+```{r boxplot3}
+par(mfrow = c(1,2))
+
+boxplot(PercentSalaryHike~train$Attrition, main = 'Salary Hike', xlab='Attrition')
+
+boxplot(PerformanceRating~train$Attrition, main = 'Performance Rating', xlab='Attrition')
+
+boxplot(RelationshipSatisfaction~train$Attrition, main = 'Relationship Satisfaction', xlab='Attrition')
+
+boxplot(StandardHours~train$Attrition, main = 'Standard Hours', xlab='Attrition')
+
+boxplot(StockOptionLevel~train$Attrition, main = 'Stock Option Level', xlab='Attrition')
+
+boxplot(TotalWorkingYears~train$Attrition, main = 'Total Working Years', xlab='Attrition')
+
+```
+
+#### FINDINGS:
+##### PercentSalaryHike:  IGNORE - No significant difference
+##### PerformanceRating: IGNORE - No significant difference
+##### RelationshipSatisfaction: IGNORE - No significant difference
+##### StandardHours: IGNORE - No significant difference
+##### StockOptionLevel: INVESTIGATE - This is a binary variable - Could be significant
+##### TotalWorkingYears: INVESTIGATE - Attrition employees have fewer years of experience - Could be significant
+
+
+***
+
+```{r boxplot_4}
+par(mfrow = c(1,2))
+
+boxplot(TrainingTimesLastYear~train$Attrition, main = 'Training Times', xlab='Attrition')
+
+boxplot(WorkLifeBalance~train$Attrition, main = 'Work Life Balance', xlab='Attrition')
+
+boxplot(YearsAtCompany~train$Attrition, main = 'Years at Company', xlab='Attrition')
+
+boxplot(YearsInCurrentRole~train$Attrition, main = 'Years in Current Role', xlab='Attrition')
+
+boxplot(YearsSinceLastPromotion~train$Attrition, main = 'Years since Last Promotion', xlab='Attrition')
+
+boxplot(YearsWithCurrManager~train$Attrition, main = 'Years With Current Manager', xlab='Attrition')
+
+```
+
+#### FINDINGS:
+##### TrainingTimesLastYear: INVESTIGATE - Attrition employees have a median of 2 while non-Attrition employees have median of 3
+##### WorkLifeBalance: IGNORE - No significant difference
+##### YearsAtCompany: IGNORE - Attrition employees seem to be working in the company for fewer years than non-Attrition employees
+##### YearsInCurrentRole: INVESTIGATE - Attrition employees have been in the current role for fewer years than non-Attrition employees
+##### YearsSinceLastPromotion: INVESTIGATE - While median years is the same for both, Attrition employees have IQR from 0-2 while non-Attrition employees IQR is 0-3 yrs
+##### YearsWithCurrManager: INVESTIGATE - Attrition employees have fewer years under the same Manager compared to non-Attrition employees 
+
+*** 
+
+* Numeric Variables to be INVESTIGATED
+    + Age
+    + DistFromHome
+    + EnvironmentSatisfaction
+    + JobSatisfaction
+    + MonthlyIncome
+    + StockOptionLevel
+    + TotalWorkingYears
+    + TrainingTimesLastYear
+    + YearsInCurrentRole
+    + YearsSinceLastPromotion
+    + YearsWithCurrentManager
+
+***
+
+```{r hist_age}
+par(mfrow = c(1,1))
+# Age - Summary
+summary(Age)
+hist(Age, main = 'Age', xlab = 'Age', col =c("Blue",'Green','Red'))
+```
+
+##### Population shows a high number of employees between 25-45 years which follows expected pattern. 
+##### No outlier investigation required.
+
+```{r hist_DistanceFromHome}
+# DistanceFromHome - Summary
+summary(DistanceFromHome)
+hist(DistanceFromHome, main = 'Distance From Home', xlab = 'Distance from Home', col =c("Blue",'Green','Red'))
+```
+
+##### Very high number of employees live less than 2 miles from work.  No unusual pattern recognized.
+
+```{r hist_MonthlyIncome}
+# MonthlyIncome - Summary
+summary(MonthlyIncome)
+hist(MonthlyIncome, main = 'Monthly Income', xlab = 'Monthly Income', col =c("Blue",'Green','Red'))
+```
+
+##### While there is a big difference between Max and Median Monthly Income, the Histogram indicates that these could be the upper management making higher salaries.  No further outlier treatment required.
+
+```{r hist_NumCompaniesWorked}
+summary(NumCompaniesWorked)
+hist(NumCompaniesWorked, main = "Number of Companies Worked", xlab = 'No. of Companies Worked', col=c('Blue','Green','Red'))
+```
+
+##### There are a significant number of employees who have worked for more than 4 companies before.
+##### Therefore, it cannot be treated as an outlier.  No further outlier treatment required.
+
+```{r hist_TotalWorkingYrs}
+summary(TotalWorkingYears)
+hist(TotalWorkingYears, main = 'Total Working Years', xlab = 'Total Working Years', col =c("Blue",'Green','Red'))
+```
+
+##### Most employees have less than 10 years experience. No usual pattern found - no outlier investigation required.
+
+```{r hist_YearsAtCompany}
+summary(YearsAtCompany)
+hist(YearsAtCompany, main = "Years at Company", xlab = 'Years', col=c('Blue','Green','Red'))
+```
+
+##### There is only one employee with 40 years in company.  This is pausible that the founder is still an employee.
+##### Therefore, it cannot be treated as an outlier.  No further outlier treatment required.
+   
+***  
+
+### Univariate Analysis - Categorical Variables
+
+```{r barplot_categ_var_1}
+par(mfrow = c(1,1))
+par(mar=c(4,4,4,4))
+par(xpd=TRUE)
+train$Attrition = as.integer(train$Attrition)
+
+cN1 = train[which(train$Attrition =="1"),"BusinessTravel"]
+cN0 = train[which(train$Attrition==0),"BusinessTravel"]
+Attr = prop.table(table(cN1))
+Non_Attr = prop.table(table(cN0))
+p = cbind(Attr,Non_Attr)
+
+b1 = barplot(p, main = "Business Travel", col = c("orange","green"),ylab = "Proportion", beside = TRUE)
+text(b1,0,rownames(p), cex=0.8, pos=4, srt=90, offset=0.1)
+
+
+cN1 = train[which(train$Attrition ==1),"Department"]
+cN0 = train[which(train$Attrition==0),"Department"]
+Attr = prop.table(table(cN1))
+Non_Attr = prop.table(table(cN0))
+p = cbind(Attr,Non_Attr)
+
+b2 = barplot(p, main = "Department", col = c("orange","green"),ylab = "Proportion", beside = TRUE)
+text(b2,0,rownames(p), cex=0.8, pos=4, srt=90, offset=0.1)
+
+cN1 = train[which(train$Attrition =="1"),"EducationField"]
+cN0 = train[which(train$Attrition==0),"EducationField"]
+Attr = prop.table(table(cN1))
+Non_Attr = prop.table(table(cN0))
+p = cbind(Attr,Non_Attr)
+
+b3 = barplot(p, main = "Education Field", col = c("orange","green"),ylab = "Proportion", beside = TRUE)
+text(b3,0,rownames(p), cex=0.8, pos=4, srt=90, offset=0.1)
+
+cN1 = train[which(train$Attrition =="1"), "Gender"]
+cN0 = train[which(train$Attrition==0),"Gender"]
+Attr = prop.table(table(cN1))
+Non_Attr = prop.table(table(cN0))
+p = cbind(Attr,Non_Attr)
+
+b4 = barplot(p, main = "Gender", col = c("orange","green"),ylab = "Proportion", beside = TRUE)
+text(b4,0,rownames(p), cex=0.8, pos=3)
+
+```
+
+```{r barplot_categ_var_2}
+cN1 = train[which(train$Attrition =="1"), "MaritalStatus"]
+cN0 = train[which(train$Attrition==0),"MaritalStatus"]
+Attr = prop.table(table(cN1))
+Non_Attr = prop.table(table(cN0))
+p = cbind(Attr,Non_Attr)
+
+b5 = barplot(p, main = "MaritalStatus", col = c("orange","green"),ylab = "Proportion", beside = TRUE)
+text(b5,0,rownames(p), cex=0.8, pos=3)
+
+
+cN1 = train[which(train$Attrition =="1"), "OverTime"]
+cN0 = train[which(train$Attrition==0),"OverTime"]
+Attr = prop.table(table(cN1))
+Non_Attr = prop.table(table(cN0))
+p = cbind(Attr,Non_Attr)
+
+b6 = barplot(p, main = "Over Time", col = c("orange","green"),ylab = "Proportion", beside = TRUE)
+text(b6,0,rownames(p), cex=0.8, pos=3)
+
+
+cN1 = train[which(train$Attrition =="1"), "JobRole"]
+cN0 = train[which(train$Attrition==0),"JobRole"]
+Attr = prop.table(table(cN1))
+Non_Attr = prop.table(table(cN0))
+p = cbind(Attr,Non_Attr)
+
+b7 = barplot(p, main = "Job Role", col = c("orange","green"),ylab = "Proportion", beside = TRUE)
+text(b7,0,rownames(p), cex=0.8, pos=4, offset=0.1, srt=90)
+
+```
+
+
+* Observations:
+    + Business Travel: Those who Travel_Rarely have a higher level of Attrition.
+    + Department: R&D has the highest attrition, followed by Sales
+    + EducationField: Medical and Life Sciences have the highest levels of Attrition.
+    + Gender: Male have higher attrition than Female.
+    + MaritalStatus: Expectedly Singles have higher attrition, followed by Married employees.
+    + OverTime: Equal proportion of Attrition employees who get/don't get OverTime.
+    + JobRole: Research Director, Healthcare Representative and Lab Technicians are most at Attrition risk.
+   
+***
+
+### Hypotesis Testing - Categorical Vs Categorical Variables
+
+#### Chi-Squared Test - 1
+##### H0: Proportion of Attrition in each Department are equal
+##### H1: Proportion of Attrition in each Department are NOT equal
+```{r chi_sq_Department}
+s1 = table(train$Attrition,train$Department)
+prop.table(s1,1)
+summary(s1)
+
+par(mfrow = c(1,1))
+mosaicplot(s1, main = 'Attrition in Departments',xlab='Attrition',ylab='Department', color = c("Green","Orange"),las=1)
+```
+
+
+##### Since the p-value (0.004) is less than 0.05, at 95% Confidence Level we can REJECT the Null Hypothesis.
+##### Proportion of Attrition in each Department are NOT equal. Research & Development has 58% of the Attrition. In other words, Attrition is NOT INDEPENDENT of Department
+
+***
+
+#### Chi-Squared Test - 2
+##### H0: Proportion of Attrition equal for Male and Female
+##### H1: Proportion of Attrition for Male and Female are NOT equal
+```{r chi_sq_Gender}
+s2 = table(train$Attrition,train$Gender)
+prop.table(s2,1)
+summary(s2)
+
+par(mfrow = c(1,1))
+mosaicplot(s2, main = 'Attrition in Gender',xlab='Attrition',ylab='Gender', color = c("Green","Orange"),las=1)
+
+```
+
+
+##### Since the p-value (0.09) is greater than 0.05, at 95% Confidence Level we ACCEPT the Null Hypothesis.
+##### Not enough evidence to prove Proportion of Attrition are different for Male and Female.  Seems like Attrition is INDEPENDENT of Gender.
+
+   
+***
+
+#### Chi-Squared Test - 3
+#####     H0: Proportion of Attrition equal for all EducationField
+#####     H1: Proportion of Attrition NOT equal for all EducationField
+
+```{r chi_sq_EducationField}
+
+s3 = table(train$Attrition,train$EducationField)
+prop.table(s3,1)
+summary(s3)
+
+mosaicplot(s3, main = 'Attrition by Education Field',xlab='Attrition',ylab='Education Field', color = c("Green","Orange"), las=1)
+
+```
+
+
+##### Since the p-value (0.04) is marginally less than 0.05, at 95% Confidence Level we REJECT the Null Hypothesis
+##### Proportion of Attrition are NOT equal for all Education fields.  
+##### Life Sciences and Medical have significantly greater Attrition than others.  Attrition is NOT INDEPENDENT of EducationField.
+   
+***     
+
+#### Chi-Squared Test - 4
+##### H0: Proportion of Attrition equal for all JobRole  
+##### H1: Proportion of Attrition NOT equal for all JobRole  
+```{r chi_sq_JobRole}
+
+s4 = table(train$Attrition,train$JobRole)
+prop.table(s4,1)
+summary(s4)
+
+par(mfrow = c(1,1))
+mosaicplot(s4, main = 'Attrition by Job Role',xlab='Attrition',ylab='Job Role', color = c("Green","Orange"), las=1)
+
+```
+
+
+##### Since the p-value (6e-06) is less than 0.05, at 95% Confidence Level we REJECT the Null Hypothesis
+##### Proportion of Attrition are NOT equal for all Education fields.  
+##### Lab Technician, Sales Executive and Research Scientist have greater Attrition than others. Attrition is NOT INDEPENDENT of JobRole.
+   
+***
+
+#### Chi-Squared Test - 5
+##### H0: Proportion of Attrition equal for all levels of Business Travel
+##### H1: Proportion of Attrition NOT equal for all levels of Business Travel
+```{r chi_sq_BusinessTravel}
+
+s5 = table(train$Attrition,train$BusinessTravel)
+s5p = prop.table(s5,1)
+summary(s5)
+
+par(mfrow = c(1,1))
+mosaicplot(s5, main = 'Attrition by Business Travel',xlab='Attrition',ylab='Business Travel', color = c("Green","Orange"), las=1)
+
+```
+
+
+##### Since the p-value (2e-09) is less than 0.05, at 95% Confidence Level we REJECT the Null Hypothesis.
+##### Proportion of Attrition are NOT equal for all levels of Business Travel.  
+##### 64% of the Attrition is contributed by those who Travel Rarely. Attrition is NOT INDEPENDENT of BusinessTravel.
+   
+***
+
+#### Chi-Squared Test - 6
+##### H0: Proportion of Attrition equal independent of Marital Status
+##### H1: Proportion of Attrition NOT independent of Marital Status
+```{r chi_sq_MaritalStatus}
+
+s6 = table(train$Attrition,train$MaritalStatus)
+prop.table(s6,1)
+summary(s6)
+
+par(mfrow = c(1,1))
+mosaicplot(s6, main = 'Attrition by Marital Status',xlab='Attrition',ylab='Marital Status', color = c("Green","Orange"), las=1)
+
+```
+
+
+##### Since the p-value (8e-14) is less than 0.05, at 95% Confidence Level we REJECT the Null Hypothesis.
+##### Proportion of Attrition are NOT equal for all Marital Status.  Attrition is NOT INDEPENDENT Of MaritalStatus.
+##### 50% of the Attrition employees are Single.
+   
+***
+
+#### Chi-Squared Test - 7
+##### H0: Proportion of Attrition is independent of Over Time
+##### H1: Proportion of Attrition NOT independent of Over Time
+```{r chi_sq_OverTime}
+s7 = table(train$Attrition,train$OverTime)
+prop.table(s7,1)
+summary(s7)
+
+par(mfrow = c(1,1))
+mosaicplot(s7, main = 'Attrition by Over Time',xlab='Attrition',ylab='Over Time', color = c("Green","Orange"), las=1)
+
+```
+
+#### Since the p-value (6e-32) is less than 0.05, at 95% Confidence Level we REJECT the Null Hypothesis.
+#### Proportion of Attrition is independent of Over Time.  Attrition is NOT INDEPENDENT of OverTime.
+#### 56% of the Attrition is contributed by those who work Over Time.
+   
+***
+
+### Data Transformation - Binning and preparing data for CHAID
+
+```{r chaid_data_prep}
+
+train2 = train
+
+summary(Age)
+train2$Age = '18-25'
+train2$Age[train$Age >25 & train$Age <=40] = '25-40'
+train2$Age[train$Age > 40] = '40-60'
+train2$Age = as.factor(train2$Age)
+
+summary(YearsAtCompany)
+train2$YearsAtCompany = '10+'
+train2$YearsAtCompany[train$YearsAtCompany >0 & train$YearsAtCompany <= 3] = '0-3'
+train2$YearsAtCompany[train$YearsAtCompany >3 & train$YearsAtCompany <= 7] = '3-7'
+train2$YearsAtCompany[train$YearsAtCompany >7 & train$YearsAtCompany <= 10] = '7-10'
+train2$YearsAtCompany = as.factor(train2$YearsAtCompany)
+
+summary(YearsInCurrentRole)
+train2$YearsInCurrentRole = '10+'
+train2$YearsInCurrentRole[train$YearsInCurrentRole >0 & train$YearsInCurrentRole <= 3] = '0-3'
+train2$YearsInCurrentRole[train$YearsInCurrentRole >3 & train$YearsInCurrentRole <= 7] = '3-7'
+train2$YearsInCurrentRole[train$YearsInCurrentRole >7 & train$YearsInCurrentRole <= 10] = '7-10'
+train2$YearsInCurrentRole = as.factor(train2$YearsInCurrentRole)
+
+summary(YearsSinceLastPromotion)
+train2$YearsSinceLastPromotion = '10+'
+train2$YearsSinceLastPromotion[train$YearsSinceLastPromotion >0 & train$YearsSinceLastPromotion <= 1] = '0-1'
+train2$YearsSinceLastPromotion[train$YearsSinceLastPromotion >1 & train$YearsSinceLastPromotion <= 5] = '1-5'
+train2$YearsSinceLastPromotion[train$YearsSinceLastPromotion >5 & train$YearsSinceLastPromotion <= 10] = '5-10'
+train2$YearsSinceLastPromotion = as.factor(train2$YearsSinceLastPromotion)
+
+summary(MonthlyIncome)
+train2$MonthlyIncome = '10000+'
+train2$MonthlyIncome[train$MonthlyIncome >1000 & train$MonthlyIncome <= 3000] = '1000-3000'
+train2$MonthlyIncome[train$MonthlyIncome >3000 & train$MonthlyIncome <= 7000] = '3000-7000'
+train2$MonthlyIncome[train$MonthlyIncome >7000 & train$MonthlyIncome <= 10000] = '7000-10000'
+train2$MonthlyIncome = as.factor(train2$MonthlyIncome)
+
+summary(MonthlyRate)
+train2$MonthlyRate = '20000+'
+train2$MonthlyRate[train$MonthlyRate >2000 & train$MonthlyRate <= 8000] = '2000-8000'
+train2$MonthlyRate[train$MonthlyRate >8000 & train$MonthlyRate <= 14000] = '8000-14000'
+train2$MonthlyRate[train$MonthlyRate >14000 & train$MonthlyRate <= 20000] = '14000-20000'
+train2$MonthlyRate = as.factor(train2$MonthlyRate)
+
+summary(NumCompaniesWorked)
+train2$NumCompaniesWorked = '5+'
+train2$NumCompaniesWorked[train$NumCompaniesWorked >0 & train$NumCompaniesWorked <= 2] = '0-2'
+train2$NumCompaniesWorked[train$NumCompaniesWorked >3 & train$NumCompaniesWorked <= 5] = '3-5'
+train2$NumCompaniesWorked = as.factor(train2$NumCompaniesWorked)
+
+summary(PercentSalaryHike)
+train2$PercentSalaryHike = '18+'
+train2$PercentSalaryHike[train$PercentSalaryHike >10 & train$PercentSalaryHike <= 14] = '10-14'
+train2$PercentSalaryHike[train$PercentSalaryHike >15 & train$PercentSalaryHike <= 18] = '15-18'
+train2$PercentSalaryHike = as.factor(train2$PercentSalaryHike)
+
+summary(TotalWorkingYears)
+train2$TotalWorkingYears = '15+'
+train2$TotalWorkingYears[train$TotalWorkingYears >0 & train$TotalWorkingYears <= 5] = '0-5'
+train2$TotalWorkingYears[train$TotalWorkingYears >5 & train$TotalWorkingYears <= 10] = '5-10'
+train2$TotalWorkingYears[train$TotalWorkingYears >10 & train$TotalWorkingYears <= 15] = '10-15'
+train2$TotalWorkingYears = as.factor(train2$TotalWorkingYears)
+
+summary(DailyRate)
+train2$DailyRate = '1200+'
+train2$DailyRate[train$DailyRate >100 & train$DailyRate <= 500] = '100-500'
+train2$DailyRate[train$DailyRate >500 & train$DailyRate <= 800] = '500-800'
+train2$DailyRate[train$DailyRate >800 & train$DailyRate <= 1200] = '800-1200'
+train2$DailyRate=as.factor(train2$DailyRate)
+
+summary(YearsWithCurrManager)
+train2$YearsWithCurrManager = '10+'
+train2$YearsWithCurrManager[train$YearsWithCurrManager >0 & train$YearsWithCurrManager <= 2] = '0-2'
+train2$YearsWithCurrManager[train$YearsWithCurrManager >2 & train$YearsWithCurrManager <= 5] = '2-5'
+train2$YearsWithCurrManager[train$YearsWithCurrManager >5 & train$YearsWithCurrManager <= 10] = '5-10'
+train2$YearsWithCurrManager=as.factor(train2$YearsWithCurrManager)
+
+summary(DistanceFromHome)
+train2$DistanceFromHome = '15+'
+train2$DistanceFromHome[train$DistanceFromHome >0 & train$DistanceFromHome <= 5] = '1-5'
+train2$DistanceFromHome[train$DistanceFromHome >5 & train$DistanceFromHome <= 10] = '5-10'
+train2$DistanceFromHome[train$DistanceFromHome >10 & train$DistanceFromHome <= 15] = '10-15'
+train2$DistanceFromHome=as.factor(train2$DistanceFromHome)
+
+summary(HourlyRate)
+train2$HourlyRate = '80+'
+train2$HourlyRate[train$HourlyRate >=30 & train$HourlyRate <= 50] = '30-50'
+train2$HourlyRate[train$HourlyRate >50 & train$HourlyRate <= 80] = '50-80'
+train2$HourlyRate=as.factor(train2$HourlyRate)
+
+
+train2$Attrition = as.factor(train2$Attrition)
+train2$BusinessTravel = as.factor(train2$BusinessTravel)
+train2$Department = as.factor(train2$Department)
+train2$EducationField = as.factor(train2$EducationField)
+train2$Gender = as.factor(train2$Gender)
+train2$JobRole = as.factor(train2$JobRole)
+train2$MaritalStatus = as.factor(train2$MaritalStatus)
+train2$Over18 = NULL
+train2$OverTime = as.factor(train2$OverTime)
+train2$PercentSalaryHike = as.factor(train2$PercentSalaryHike)
+train2$PerformanceRating = as.factor(train2$PerformanceRating)
+train2$RelationshipSatisfaction = as.factor(train2$RelationshipSatisfaction)
+train2$StandardHours = NULL
+train2$StockOptionLevel = as.factor(train2$StockOptionLevel)
+train2$TrainingTimesLastYear = as.factor(train2$TrainingTimesLastYear)
+train2$WorkLifeBalance = as.factor(train2$WorkLifeBalance)
+train2$Education = as.factor(train2$Education)
+train2$EmployeeCount = NULL
+train2$EmployeeNumber = NULL
+train2$EnvironmentSatisfaction = as.factor(train2$EnvironmentSatisfaction)
+train2$JobInvolvement = as.factor(train2$JobInvolvement)
+train2$JobLevel = as.factor(train2$JobLevel)
+train2$JobSatisfaction = as.factor(train2$JobSatisfaction)
+
+```
+
+***
+
+### Decision Trees - CHAID Control and Plot
+
+```{r chaid_tree}
+library(CHAID)
+library(partykit)
+library(foreign)
+library(Hmisc)
+#library(Rcmdr)
+
+train2$Attrition = as.factor(train2$Attrition)
+
+ctrl <- chaid_control(minbucket = 150, minsplit = 150, alpha2=.001, alpha4 = .001)
+chaid.tree = chaid(Attrition ~.,data=train2,control=ctrl)
+
+print(chaid.tree)
+
+```
+
+
+#### Plot CHAID Tree
+```{r chaid_plot}
+plot(chaid.tree, type='extended', main = "CHAID Tree with Train Data")
+
+```
+
+***
+
+### Predict Using CHAID Model for Test data
+
+```{r chaid_predict}
+test$Attrition[test$Attrition == "Yes"] = 1
+test$Attrition[test$Attrition == "No"] = 0
+test$Attrition = as.integer(test$Attrition)
+## test$predict.class = predict(chaid.tree, newdata=test, type="class")
+```
+
+##### Tried predicting the test data using CHAID model - getting an error: Error: storage.mode(x) == "integer" is not TRUE 
+
+### Decision Trees - CART
+
+```{r cart_print_all}
+library(rattle)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+
+CART_train = rpart(Attrition ~.,data=train,method='class')
+printcp(CART_train)
+```
+
+### Plot CART Tree
+
+```{r cart_plot}
+prp(CART_train, uniform = TRUE, main = "CART Tree Using train Data")
+plotcp(CART_train, main="CP Plot for CART Tree")
+```
+
+#### From the CP Plot, the curve flattens at cp=0.012 and 0.011.  Will use cp=0.012 for further analysis.
+***
+
+```{r cart_predict_train}
+train$Attrition = as.numeric(train$Attrition)
+PredictCART_train = predict(CART_train, newdata=train, type="class")
+
+# Let us compare the predictions to compare them to actual outcome
+table(train$Attrition, PredictCART_train)
+```
+
+### Findings:
+#####  Comparing Accuracy between Baseline Model and Prediction is right the right metric.  The cost of an employee leaving the company when the model predicted him/her to be non-Attrition is much higher than the other way round. In other words, False Negatives are more expensive than False Positives.  Therefore, we should be comparing the FN Rate.
+
+##### Baseline False Negative Rate for Train data: 0.1613
+##### CART Model False Negative Rate for train: 176/(1703+176) = 0.0936
+
+##### Therefore, our CART model has significantly improved the False Negative Rate and has proved to be a GOOD MODEL.
+
+***
+
+
+```{r cart_prune}
+## Pruning Code
+ptree<- prune(CART_train, cp= 0.012,"CP")
+printcp(ptree)
+prp(ptree, uniform=TRUE,  main="Pruned CART Classification Tree")
+```
+
+#### After Pruning, the number of nodes used reduced from 12 to 11.  Interestingly, the Standard Error (xstd) decreases with increase in
+#### number of nodes.  The xtd is lowest at CP=0.013 and nsplit = 11.
+
+***
+
+### Use Rattle to see model evaluation methods
+
+```{r cart_predict_prep}
+## Scoring syntax
+train$predict.class <- predict(CART_train, train, type="class")
+train$predict.score <- predict(CART_train, train)
+
+head(train$predict.score[,2])
+```
+
+***
+
+#### Predict and test on 'test' dataset
+```{r cart_predict_test}
+# Now let us use the model built above and predict the outcome for Test data
+test$Attrition[test$Attrition == 'Yes'] = 1
+test$Attrition[test$Attrition == 'No'] = 0
+test$Attrition = as.numeric(test$Attrition)
+PredictCART = predict(CART_train, newdata=test, type="class")
+
+# Let us compare the predictions to compare them to actual outcome
+table(test$Attrition, PredictCART)
+
+```
+
+#### Prediction Confusion Matrix using CART for Test Data
+#### (717 + 49) / 882 = 0.864  Significant improvement over the Baseline accuracy of 84%
+
+***
+
+#### Draw ROC Curve and KS Statistic
+#### KS is the maximum difference between the cumulative true positive and cumulative false positive rate that we can calculate from ROC curve.
+
+```{r auc_train}
+library(ROCR)
+pred = prediction(train$predict.score[,2],train$Attrition)
+perf = performance(pred,"tpr","fpr")
+
+KS_train <- max(attr(perf, 'y.values')[[1]]-attr(perf, 'x.values')[[1]])
+auc_train <- performance(pred,"auc"); 
+auc_train <- as.numeric(auc_train@y.values)
+
+```
+
+
+```{r rocr_plot_train}
+plot(perf, main="ROC Curve for Attrition")
+print("Area Under the Curve (AUC) (Train Data):  ")
+print(auc_train)
+print("KS_train: ")
+KS_train
+
+## Syntax to get the node path
+tree.path <- path.rpart(ptree, node = c(2, 12))
+```
+
+***
+
+#### Scoring using test data
+
+#### AUC using Test data
+
+```{r auc_test}
+test$predict.class <- predict(CART_train, test, type="class")
+test$predict.score <- predict(CART_train, test)
+
+pred = prediction(test$predict.score[,2],test$Attrition)
+perf = performance(pred,"tpr","fpr")
+
+KS_test <- max(attr(perf, 'y.values')[[1]]-attr(perf, 'x.values')[[1]])
+auc_test <- performance(pred,"auc"); 
+auc_test <- as.numeric(auc_test@y.values)
+```
+
+```{r auc_test_plot}
+plot(perf, main="ROC Curve for Attrition (Test Data")
+print("Area Under the Curve (AUC) Test data:  ")
+print(auc_test)
+print("KS_test: ")
+KS_test
+```
+
+##### AUC for Test Data (0.7381) is lower than AUC for Train Data (0.7873) which is expected.  However, we can explore improving this model further.
+
+```{r deciles_train}
+# deciling code
+library(rattle)
+
+decile <- function(x){
+  deciles <- vector(length=10)
+  for (i in seq(0.1,1,.1)){
+    deciles[i*10] <- quantile(x, i, na.rm=T)
+  }
+  return (
+  ifelse(x<deciles[1], 1,
+  ifelse(x<deciles[2], 2,
+  ifelse(x<deciles[3], 3,
+  ifelse(x<deciles[4], 4,
+  ifelse(x<deciles[5], 5,
+  ifelse(x<deciles[6], 6,
+  ifelse(x<deciles[7], 7,
+  ifelse(x<deciles[8], 8,
+  ifelse(x<deciles[9], 9, 10
+  ))))))))))
+}
+
+## deciling
+train$deciles <- decile(train$predict.score[,2])
+
+head(train$deciles)
+```
+
+
+```{r ranking_train}
+## Ranking code
+library(data.table)
+tmp_DT = data.table(train)
+rank <- tmp_DT[, list(
+  cnt = length(Attrition), 
+  cnt_attr = sum(Attrition == 1), 
+  cnt_non_attr = sum(Attrition == 0)) , 
+  by=deciles][order(-deciles)]
+rank$rrate <- round(rank$cnt_attr * 100 / rank$cnt,2);
+rank$cum_attr <- cumsum(rank$cnt_attr)
+rank$cum_non_attr <- cumsum(rank$cnt_non_attr)
+rank$cum_perct_attr <- round(rank$cum_attr * 100 / sum(rank$cnt_attr),2);
+rank$cum_perct_non_attr <- round(rank$cum_non_attr * 100 / sum(rank$cnt_non_attr),2);
+rank$cum_rel_attr <- round(rank$cum_attr / sum(rank$cnt_attr),2);
+rank$cum_rel_non_attr <- round(rank$cum_non_attr / sum(rank$cnt_non_attr),2);
+#rank$ks <- abs(rank$cum_rel_resp - rank$cum_rel_non_resp);
+rank$ks <- abs(rank$cum_rel_attr - rank$cum_rel_non_attr);
+rank
+```
+
+
+***
+
+```{r gini_train}
+
+library(ineq)
+
+gini = ineq(train$predict.score[,2], type="Gini")
+
+with(train, table(Attrition, predict.class))
+auc_train
+KS_train
+gini
+```
+
+##### Not sure how to interpret Gini values
+
+***
+
+#### Scoring test sample
+```{r}
+
+test$predict.class <- predict(CART_train, test, type="class")
+test$predict.score <- predict(CART_train, test)
+
+with(test, table(Attrition, predict.class))
+```
+
+table(train$OverTime)
+
+* CONCLUSIONS:
+    + Both CHAID and CART models indicate OverTime to be root node. 
+    + Among the 30% of the employees receiving Over Time, who are most likely hourly employees, the more recent hires are at higher risk of attrition.
+      + This is especially true about Job Roles other than R&D roles who may be looking for stable opportunities.
+      + Environment Satisfaction is important to these employees.
+    + Among the majority of non-overtime employees, Monthly Income is a key consideration.
+      + Employees with lower Monthly Income - Job Roles, DistanceFromWork and Number of Companies worked will be decision factors in staying with the company.
+      + However, for higher MonthlyIncome employees - DailyRate(Strangely!!), StockOptions, DistanceFromWork become important considerations.
+    + Overall, the company may be better able to manage Attrition by making OverTime available to more employees - in which case the decision makers will have fewer variables to manage.
+
